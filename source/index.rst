@@ -9,12 +9,7 @@ Welcome to git_book's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+   beginning/index
+   base/index
+   tool/index
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
