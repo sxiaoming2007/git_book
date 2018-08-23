@@ -1,138 +1,246 @@
-# Jupyter 的安装和使用
-
-## IPython 和 Jupyter
-
-IPython 是一个 Python REPl shell，环境远比 Python 自带的强大，而 Jupyter Notebook 则是一个基于 IPython REPl 的 Web 应用，运行结果可保存为后缀.ipynb，交互性强，所见即所得，数据分析，写分析报告等的不二利器。
-
-官方解释：
-
-> The Jupyter Notebook is a web application that allows you to create and share documents that contain live code, equations, visualizations and explanatory text. Uses include: data cleaning and transformation, numerical simulation, statistical modeling, machine learning and much more.
+AutoStructify Component
+=======================
+AutoStructify is a component in recommonmark that takes a parsed docutil AST by `CommonMarkParser`,
+and transform it to another AST that introduces some of more. This enables additional features
+of recommonmark syntax, to introduce more structure into the final generated document.
 
 
-## 安装
-
-如果有看过我上一篇文章 [《用 Linux 处理数据》](http://scottming.com/2016/04/03/use_linux/#linux--1) ，并安装了 [Anaconda](https://www.continuum.io/downloads)，那么你已经有 Jupyter 了，打开终端，输入 `jupyter notebook` 即可。
-
-#### 远程使用
-
-如果有远程使用的需求，则需把远程服务器配置下。
-
-```
-# 服务器下载 ssh 服务，如 Debian
-sudo apt-get install openssh-server
-# 不知道 ssh 是否打开，可以把他重启下
-sudo service sshd restart
-```
-然后可以在局域网用其他电脑访问下，Mac 可直接在终端输入 `ssh username@ip`, 这里的 ip 指的局域网下的这台服务器的 ip，建议在路由器设置成静态 ip，若在外网使用，则需在路由器里面设置好端口转发。
-
-然后参考官方教程 [Running a notebook server](http://jupyter-notebook.readthedocs.org/en/latest/public_server.html) 配置，有几个地方要注意下：
-
-jupyter_notebook_config.py 这个文件里面 certfile 和 keyfile 的地址应为绝对地址，如我的是
-
-```
-jupyter notebook --certfile=/home/scott/.jupyter/mycert.pem --keyfile /home/scott/.jupyter/mykey.key
-```
-
-一大串输入很麻烦，也易出错，建议打开 .zshrc，并在底部添加一行：
-
-```
-alias jn='jupyter notebook --certfile=/home/scott/.jupyter/mycert.pem --keyfile /home/scott/.jupyter/mykey.key'
-```
-
-这样到其他电脑键入：
-
-```
-jn
-```
-
-若能看到类似下方的输出，证明配置成功了。
-
-```
-[I 09:56:29.937 NotebookApp] The Jupyter Notebook is running at: https://[all ip addresses on your system]:8889/
-```
-
-我的端口配置的是 `8889`， 你也可以设置成其他的，再到路由器里配置下端口转发，大功告成。如果有用 R，也可用类似的方法配置下 [RStudio Server](https://www.rstudio.com/products/rstudio/download-server/)，超简单。
-
-## 快捷操作
-Jupyter Notebook 的快捷键是一大亮点，如果有看过我这篇文章 [《让 CapsLock 键更实用》](http://scottming.com/2016/01/01/remap_keyboard/)（昨天顺手把 karabiner 配置的 gist 更新了），并对 Mac 或 Win 做了配置，那么你熟悉几个 Jupyter 的快捷，用 Jupyter 写报告之类基本上不需要鼠标了。
-
-#### 单元类型 (cell type)
-
-`Jupyter Notebook`文档由一系列的单元 (cell) 组成，主要用的两类单元是：
-
-+ `markdown cell`，命令模式下，按 `m` 可将单元切换为 `markdown cell` 。
-+ `code cell`，命令模式下，按 `y` 可将单元切换为 `code cell` 。
-
-#### 常用快捷
-
-+ 查看快捷键帮助: `h`
-+ 保存: `s`
-+ cell 间移动: `j`, `k`
-+ 添加 cell: `a`, `b`
-+ 删除 cell: `dd`
-+ cell 编辑: `x`, `c`, `v`, `z`
-+ 中断 kernel: `ii`
-+ 重启 kernel: `00`
-- 注释 code: `Ctrl + /`
-
-#### 拆分单元 (split cell)
-
-编辑模式下按 `control + shift + -` 可拆分 c ell
-
-## 查看对象信息
+Configuring AutoStructify
+-------------------------
+The behavior of AutoStructify can be configured via a dict in document setting.
+In sphinx, you can configure it by `conf.py`. The following snippet
+is what is actually used to generate this document, see full code at [conf.py](conf.py).
 
 ```python
-import numpy as np
+github_doc_root = 'https://github.com/rtfd/recommonmark/tree/master/doc/'
+def setup(app):
+    app.add_config_value('recommonmark_config', {
+            'url_resolver': lambda url: github_doc_root + url,
+            'auto_toc_tree_section': 'Contents',
+            }, True)
+    app.add_transform(AutoStructify)
+
+```
+All the features are by default enabled
+
+***List of options***
+* __enable_auto_toc_tree__: whether enable [Auto Toc Tree](#auto-toc-tree) feature.
+* __auto_toc_tree_section__: when enabled,  [Auto Toc Tree](#auto-toc-tree) will only be enabled on section that matches the title.
+* __enable_auto_doc_ref__: whether enable [Auto Doc Ref](#auto-doc-ref) feature.  **Deprecated**
+* __enable_math__: whether enable [Math Formula](#math-formula)
+* __enable_inline_math__: whether enable [Inline Math](#inline-math)
+* __enable_eval_rst__: whether [Embed reStructuredText](#embed-restructuredtext) is enabled.
+* __url_resolver__: a function that maps a existing relative position in the document to a http link
+
+Auto Toc Tree
+-------------
+One of important command in tools like sphinx is `toctree`. This is a command to generate table of contents and
+tell sphinx about the structure of the documents. In markdown, usually we manually list of contents by a bullet list
+of url reference to the other documents.
+
+AutoStructify will transforms bullet list of document URLs
+
+```
+* [Title1](doc1.md)
+* [Title2](doc2.md)
+```
+will be translated to the AST of following reStructuredText code
+```rst
+.. toctree::
+   :maxdepth: 1
+
+   doc1
+   doc2
+```
+You can also find the usage of this feature in `index.md` of this document.
+
+Auto Doc Ref
+------------
+
+```eval_rst
+.. note:: **This option is deprecated.**
+    This option has been superseded by the default linking behavior, which
+    will first try to resolve as an internal reference, and then as an
+    external reference.
 ```
 
-按 `tab` 键查看提示信息
+It is common to refer to another document page in one document. We usually use reference to do that.
+AutoStructify will translate these reference block into a structured document reference. For example
+```
+[API Reference](api_ref.md)
+```
+will be translated to the AST of following reStructuredText code
+```
+:doc:`API Reference </api_ref>`
+```
+And it will be rendered as [API Reference](api_ref)
+
+URL Resolver
+------------
+Sometimes in a markdown, we want to refer to the code in the same repo.
+This can usually be done by a reference by reference path. However, since the generated document is hosted elsewhere,
+the relative path may not work in generated document site. URL resolver is introduced to solve this problem.
+
+Basically, you can define a function that maps an relative path of document to the http path that you wish to link to.
+For example, the setting  mentioned in the beginning of this document used a resolver that maps the files to github.
+So `[parser code](../recommonmark/parser.py)` will be translated into [parser code](../recommonmark/parser.py)
+
+Note that the reference to the internal document will not be passed to url resolver, and will be linked to the internal document pages correctly, see [Auto Doc Ref](#auto-doc-ref).
+
+
+Codeblock Extensions
+--------------------
+In markdown, you can write codeblocks fenced by (at least) three backticks
+(```` ``` ````).  The following is an example of codeblock.
+
+````
+``` language
+some code block
+```
+````
+
+Codeblock extensions are mechanism that specialize certain codeblocks to different render behaviors.
+The extension will be trigger by the language argument to the codeblck
+
+### Syntax Highlight
+You can highlight syntax of codeblocks by specifying the language you need. For example,
+
+````
+```python
+def function():
+    return True
+```
+````
+
+will be rendered as
 
 ```python
-np.<tab>
+def function():
+    return True
 ```
 
-查找 `numpy` 模块下，名称含有 `cos` 的对象
+### Math Formula
+You can normally write latex math formula with `math` codeblock. See also [Inline Math](#inline-math).
 
-```python
-np.*cos*?
+Example
+
+````
+```math
+E = m c^2
 ```
-提供 numpy 模块的帮助信息
+````
 
-```python
-np?
-```
-提供 numpy 模块更详细的帮助信息
+will be rendered as
 
-```python
-np??
-```
-查看 docstring
-
-```python
-%pdoc np
+```math
+E = m c^2
 ```
 
-## 魔术命令
+### Embed reStructuredText
+Recommonmark also allows embedding reStructuredText syntax in the codeblocks.
+There are two styles for embedding reStructuredText. The first is enabled by `eval_rst` codeblock. The content of codeblock will be parsed as reStructuredText and insert into the document. This can be used to quickly introduce some of reStructuredText command that not yet available in markdown. For example,
 
-最常用的是这个 `%matplotlib inline`，有点类似 `ipython --pylab`，画图用的；测试程序运行时间则只需把 `%time` 放在前面。
+````
+```eval_rst
+.. autoclass:: recommonmark.transform.AutoStructify
+    :show-inheritance:
+```
+````
 
-更多魔术命令可在 Jupyter Notebook 里键入：
+will be rendered as
 
-```python
-%lsmagic
+```eval_rst
+.. autoclass:: recommonmark.transform.AutoStructify
+    :show-inheritance:
 ```
 
-## 转换
+This example used to use sphinx autodoc to insert document of AutoStructify class definition into the document.
+
+The second style is a shorthand of the above style. It allows you to leave off the eval_rst .. portion and directly render directives. For example,
+
+````rst
+``` important:: Its a note! in markdown!
+```
+````
+
+will be rendered as
+
+``` important:: Its a note! in markdown!
+```
+
+#### An Advanced Example
+
+````rst
+``` sidebar:: Line numbers and highlights
+
+     emphasis-lines:
+       highlights the lines.
+     linenos:
+       shows the line numbers as well.
+     caption:
+       shown at the top of the code block.
+     name:
+       may be referenced with `:ref:` later.
+```
+
+``` code-block:: markdown
+     :linenos:
+     :emphasize-lines: 3,5
+     :caption: An example code-block with everything turned on.
+     :name: Full code-block example
+
+     # Comment line
+     import System
+     System.run_emphasis_line
+     # Long lines in code blocks create a auto horizontal scrollbar
+     System.exit!
+```
+````
+
+will be rendered as
+
+``` sidebar:: Line numbers and highlights
+
+    emphasis-lines:
+      highlights the lines.
+    linenos:
+      shows the line numbers as well.
+    caption:
+      shown at the top of the code block.
+    name:
+      may be referenced with `:ref:` later.
+```
+
+``` code-block:: markdown
+    :linenos:
+    :emphasize-lines: 3,5
+    :caption: An example code-block with everything turned on.
+    :name: Full code-block example
+
+    # Comment line
+    import System
+    System.run_emphasis_line
+    # Long lines in code blocks create a auto horizontal scrollbar
+    System.exit!
+```
+
+The `<div style="clear: right;"></div>` line clears the sidebar for the next title.
+
+<div style="clear: right;"></div>
+
+
+Inline Math
+-----------
+Besides the [Math Formula](#math-formula), you can also write latex math in inline codeblock text. You can do so by inserting `$`
+in the beginning and end of inline codeblock.
+
+Example
 
 ```
-# ipynb 文件转为 html
-jupyter nbconvert --to html filename.ipynb
+This formula `$ y=\sum_{i=1}^n g(x_i) $`
 ```
 
-更多转换内容，请键入：
+will be rendered as:
 
-```
-jupyter notebook --help
-```
+This formula `$ y=\sum_{i=1}^n g(x_i) $`
 
-转换 rst、py、md 等格式都是非常方便的，但转 pdf，对中文的支持不好。必须先装 LaTex，LaTex 则需先把字体等调好。
